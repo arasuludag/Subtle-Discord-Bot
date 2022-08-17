@@ -1,0 +1,22 @@
+{
+  "extends": "eslint:recommended",
+  "env": {
+    "node": true,
+    "es6": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2021
+  },
+  "rules": {
+    // enable additional rules
+    "quotes": ["error", "double"],
+    "semi": ["error", "always"],
+
+    // override configuration set by extending "eslint:recommended"
+    "no-empty": "warn",
+    "no-cond-assign": ["error", "always"],
+
+    // disable rules from base configurations
+    "for-direction": "off"
+  }
+}
