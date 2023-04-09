@@ -73,11 +73,13 @@ module.exports = {
           }
           roleManager(i.customId.split("->")[0]);
 
-          await i.update({
-            content: `${isAdd ? "Added" : "Removed"} ${
-              i.customId.split("->")[0]
-            }`,
-          });
+          await i
+            .update({
+              content: `${isAdd ? "Added" : "Removed"} ${
+                i.customId.split("->")[0]
+              }`,
+            })
+            .catch(() => console.error);
         });
 
         collector.on("end", async () => {

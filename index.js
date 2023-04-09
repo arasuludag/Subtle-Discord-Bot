@@ -9,6 +9,7 @@ const {
   Collection,
 } = require("discord.js");
 const { deploy } = require("./deploy-commands");
+const { commands } = require("./!commands/exclamationCommands");
 // const { twitterStream } = require("./twitterStream");
 
 const client = new Client({
@@ -69,6 +70,11 @@ client.on("ready", async () => {
   // twitterStream(client);
 
   setInterval(presence, 1000 * 60 * 60);
+});
+
+// For ! commands and funny replies.
+client.on(Events.MessageCreate, async (message) => {
+  await commands(message, client);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
