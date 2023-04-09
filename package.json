@@ -11,8 +11,9 @@
   "author": "Aras Uludag",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^13.8.0",
+    "discord.js": "^14.9.0",
     "dotenv": "^16.0.1",
+    "i18next": "^22.4.14",
     "twitter-api-v2": "^1.12.2"
   },
   "devDependencies": {

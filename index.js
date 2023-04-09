@@ -1,16 +1,57 @@
 require("dotenv").config();
-const { Client, Intents } = require("discord.js");
-const { twitterStream } = require("./twitterStream");
+const fs = require("node:fs");
+const path = require("node:path");
+const {
+  Client,
+  GatewayIntentBits,
+  Partials,
+  Events,
+  Collection,
+} = require("discord.js");
+const { deploy } = require("./deploy-commands");
+// const { twitterStream } = require("./twitterStream");
 
-const myIntents = new Intents();
-myIntents.add(Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILDS);
 const client = new Client({
-  intents: myIntents,
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
+  ],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
+
+client.commands = new Collection();
+const commandsPath = path.join(__dirname, "commands");
+const commandFiles = fs
+  .readdirSync(commandsPath)
+  .filter((file) => file.endsWith(".js"));
+
+for (const file of commandFiles) {
+  const filePath = path.join(commandsPath, file);
+  const command = require(filePath);
+  // Set a new item in the Collection with the key as the command name and the value as the exported module
+  if ("data" in command && "execute" in command) {
+    client.commands.set(command.data.name, command);
+  } else {
+    console.log(
+      `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`
+    );
+  }
+}
+
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+  client.commands.set(command.data.name, command);
+}
 
 // When we are ready, emit this.
 client.on("ready", async () => {
   console.log(`Logged in as ${client.user.tag}!`);
+
+  deploy();
 
   function presence() {
     client.user.setPresence({
@@ -25,30 +66,58 @@ client.on("ready", async () => {
   }
 
   presence();
-  twitterStream(client);
+  // twitterStream(client);
 
   setInterval(presence, 1000 * 60 * 60);
 });
 
-client.on("messageCreate", async (message) => {
-  if (message.type === "GUILD_MEMBER_JOIN") {
-    message.react("👋");
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
 
-    let memberRole = message.guild.roles.cache.find(
-      (r) => r.name === process.env.MEMBERROLENAME
-    );
+  const command = interaction.client.commands.get(interaction.commandName);
 
-    if (!memberRole)
-      memberRole = await message.guild.roles
-        .create({
-          name: process.env.MEMBERROLENAME,
-          color: "BLUE",
-          reason: "For the members.",
-        })
-        .catch(console.error);
+  if (!command) {
+    console.error(`No command matching ${interaction.commandName} was found.`);
+    return;
+  }
 
-    message.member.roles.add(memberRole);
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({
+        content: "There was an error while executing this command!",
+        ephemeral: true,
+      });
+    } else {
+      await interaction.reply({
+        content: "There was an error while executing this command!",
+        ephemeral: true,
+      });
+    }
   }
 });
+
+// client.on("messageCreate", async (message) => {
+//   if (message.type === "GUILD_MEMBER_JOIN") {
+//     message.react("👋");
+
+//     let memberRole = message.guild.roles.cache.find(
+//       (r) => r.name === process.env.MEMBERROLENAME
+//     );
+
+//     if (!memberRole)
+//       memberRole = await message.guild.roles
+//         .create({
+//           name: process.env.MEMBERROLENAME,
+//           color: "BLUE",
+//           reason: "For the members.",
+//         })
+//         .catch(console.error);
+
+//     message.member.roles.add(memberRole);
+//   }
+// });
 
 client.login(process.env.TOKEN); // Login bot using token.
