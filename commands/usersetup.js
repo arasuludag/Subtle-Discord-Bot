@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const axios = require("axios");
+const phpUnserialize = require("php-unserialize");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -9,8 +10,8 @@ module.exports = {
     )
     .addStringOption((option) =>
       option
-        .setName("username")
-        .setDescription("Your Subtle username.")
+        .setName("email")
+        .setDescription("Your Subtle email or username.")
         .setRequired(true)
     )
     .addStringOption((option) =>
@@ -18,14 +19,10 @@ module.exports = {
         .setName("password")
         .setDescription("Your Subtle password.")
         .setRequired(true)
-    )
-    .addRoleOption((option) =>
-      option.setName("target_language").setDescription("Your target language.")
     ),
   async execute(interaction) {
-    const username = interaction.options.getString("username");
+    const username = interaction.options.getString("email");
     const password = interaction.options.getString("password");
-    const languageRole = interaction.options.getRole("target_language");
 
     const replyMessage = await interaction.reply({
       content: "Waiting for Subtle's website to respond.",
@@ -50,17 +47,99 @@ module.exports = {
         .setNickname(response.data.display_name)
         .catch((error) => console.error(error));
 
-      if (languageRole) interaction.member.roles.add(languageRole);
+      await replyMessage.edit(
+        `Hi ${response.data.display_name}. We're fetching the appropriate roles for you.`
+      );
+
+      const memberProResponse = await axios.get(
+        `https://subtle-subtitlers.org.uk/wp-content/plugins/indeed-membership-pro/apigate.php?ihch=${process.env.MEMBERPROSECRET}&action=user_get_details&uid=${response.data.user_id}`
+      );
+
+      const memberProData = memberProResponse.data.response;
+
+      // Extract unique languages
+      const languages = [
+        memberProData.source_languages,
+        memberProData.target_language,
+        memberProData.pair1_source_language,
+        memberProData.pair1_target_language,
+        memberProData.pair2_source_language,
+        memberProData.pair2_target_language,
+        memberProData.pair3_source_language,
+        memberProData.pair3_target_language,
+        memberProData.pair4_source_language,
+        memberProData.pair4_target_language,
+        memberProData.pair5_source_language,
+        memberProData.pair5_target_language,
+        memberProData.other_language,
+        memberProData.native_language,
+      ]
+        .filter((lang) => lang !== "")
+        .map((lang) => {
+          try {
+            const deserializedArray = phpUnserialize.unserialize(lang); // Deserialize PHP serialized array
+            return deserializedArray[0];
+          } catch (error) {
+            return null;
+          }
+        })
+        .filter((lang) => lang !== null); // Filter out null values
+
+      const uniqueLanguages = [...new Set(languages)];
+
+      // Extract services and software used
+      const services = memberProData.service
+        ? Object.values(phpUnserialize.unserialize(memberProData.service))
+        : [];
+      const softwareUsed = memberProData.software_used
+        ? memberProData.software_used.split("\r\n")
+        : [];
+
+      await joinRoles(interaction, uniqueLanguages);
+      await joinRoles(interaction, services);
+      await joinRoles(interaction, softwareUsed);
+
+      console.log("Unique Languages: ", uniqueLanguages);
+      console.log("Services: ", services);
+      console.log("Software Used: ", softwareUsed);
 
       replyMessage.edit(
         `Welcome ${response.data.display_name}. You have been assigned your role.`
       );
     } catch (error) {
-      if (error.response && error.response.status === 401) {
-        replyMessage.edit("You got something wrong. Try again.");
-      } else {
-        console.error(error);
-      }
+      if (error.response)
+        switch (error.response.status) {
+          case 401:
+            replyMessage.edit("You got something wrong. Try again.");
+            break;
+          case 503:
+            replyMessage.edit("Server seems to be busy. Try again later.");
+            break;
+
+          default:
+            console.error(error);
+            break;
+        }
     }
   },
 };
+
+async function joinRoles(interaction, roleStringArray) {
+  // Loop through services and update roles
+  for (const roleString of roleStringArray) {
+    const role = interaction.guild.roles.cache.find(
+      (role) => role.name === roleString
+    );
+    if (!role) {
+      // If role doesn't exist, create it
+      const createdRole = await interaction.guild.roles.create({
+        name: roleString,
+      });
+      console.log(`Role "${createdRole.name}" created!`);
+      await interaction.member.roles.add(createdRole);
+    } else {
+      // If role already exists, join it
+      await interaction.member.roles.add(role);
+    }
+  }
+}

@@ -10,7 +10,6 @@ const {
 } = require("discord.js");
 const { deploy } = require("./deploy-commands");
 const { commands } = require("./!commands/exclamationCommands");
-// const { twitterStream } = require("./twitterStream");
 
 const client = new Client({
   intents: [
@@ -67,7 +66,6 @@ client.on("ready", async () => {
   }
 
   presence();
-  // twitterStream(client);
 
   setInterval(presence, 1000 * 60 * 60);
 });

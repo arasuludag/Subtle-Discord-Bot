@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const { sendEmbed, replyEmbed } = require("../customSend.js");
 const { findChannel } = require("../functions.js");
 
@@ -11,8 +11,7 @@ module.exports = {
         .setName("text")
         .setDescription("What do you need help with?")
         .setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.MentionEveryone),
+    ),
   async execute(interaction) {
     const helpChannel = findChannel(interaction, process.env.HELPCHANNELNAME);
 
