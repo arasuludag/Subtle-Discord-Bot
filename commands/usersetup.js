@@ -25,7 +25,7 @@ module.exports = {
     const password = interaction.options.getString("password");
 
     const replyMessage = await interaction.reply({
-      content: "Waiting for Subtle's website to respond.",
+      content: "Waiting for Subtle's website to respond. Please wait a few seconds.",
       ephemeral: true,
     });
 
@@ -91,20 +91,12 @@ module.exports = {
       const services = memberProData.service
         ? Object.values(phpUnserialize.unserialize(memberProData.service))
         : [];
-      const softwareUsed = memberProData.software_used
-        ? memberProData.software_used.split("\r\n")
-        : [];
 
       await joinRoles(interaction, uniqueLanguages);
       await joinRoles(interaction, services);
-      await joinRoles(interaction, softwareUsed);
-
-      console.log("Unique Languages: ", uniqueLanguages);
-      console.log("Services: ", services);
-      console.log("Software Used: ", softwareUsed);
 
       replyMessage.edit(
-        `Welcome ${response.data.display_name}. You have been assigned your role.`
+        `Welcome ${response.data.display_name}. You are now a member of Subtle Chat!`
       );
     } catch (error) {
       if (error.response)
@@ -127,9 +119,12 @@ module.exports = {
 async function joinRoles(interaction, roleStringArray) {
   // Loop through services and update roles
   for (const roleString of roleStringArray) {
+    if (roleString === process.env.ADMINROLENAME) return;
+
     const role = interaction.guild.roles.cache.find(
       (role) => role.name === roleString
     );
+
     if (!role) {
       // If role doesn't exist, create it
       const createdRole = await interaction.guild.roles.create({
