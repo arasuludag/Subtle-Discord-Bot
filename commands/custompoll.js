@@ -161,8 +161,11 @@ module.exports = {
               components: [],
             })
             .then(async (replyMessage) => {
-              await replyEmbed(replyMessage, "poll.ended");
+              await replyEmbed(replyMessage, { path: "poll.ended" });
               await replyMessage.channel.send(pollResultMessage);
+            })
+            .catch(() => {
+              console.log("Custom poll ephemeral result edit failed.");
             });
           await interaction
             .editReply(

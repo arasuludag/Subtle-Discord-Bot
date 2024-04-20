@@ -10,6 +10,10 @@ const {
 } = require("discord.js");
 const { deploy } = require("./deploy-commands");
 const { commands } = require("./!commands/exclamationCommands");
+const mongoose = require("mongoose");
+const monthlyUpvotes = require("./cronJobs/monthlyUpvotes");
+const addUpvote = require("./reactions/addUpvote");
+const removeUpvote = require("./reactions/removeUpvote");
 
 const client = new Client({
   intents: [
@@ -53,26 +57,33 @@ client.on("ready", async () => {
 
   deploy();
 
-  function presence() {
-    client.user.setPresence({
-      status: "idle",
-      activities: [
-        {
-          name: "News",
-          type: "WATCHING",
-        },
-      ],
-    });
-  }
+  client.user.setPresence({
+    status: "idle",
+  });
 
-  presence();
+  monthlyUpvotes(client);
 
-  setInterval(presence, 1000 * 60 * 60);
 });
 
 // For ! commands and funny replies.
 client.on(Events.MessageCreate, async (message) => {
   await commands(message, client);
+});
+
+client.on("messageReactionAdd", async (reaction, user) => {
+  if (!reaction.message.guild || user.bot) return;
+
+  if (reaction.emoji.name === "subtlethanks") {
+    await addUpvote(reaction, user);
+  }
+});
+
+client.on("messageReactionRemove", async (reaction, user) => {
+  if (!reaction.message.guild || user.bot) return;
+
+  if (reaction.emoji.name === "subtlethanks") {
+    await removeUpvote(reaction, user);
+  }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -124,4 +135,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 //   }
 // });
 
-client.login(process.env.TOKEN); // Login bot using token.
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log("Connected to MongoDB successfully");
+
+    // Start the Discord bot only after the MongoDB connection is established
+    client.login(process.env.TOKEN);
+  })
+  .catch(err => console.error("Could not connect to MongoDB", err));

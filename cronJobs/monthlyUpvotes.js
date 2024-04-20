@@ -1,0 +1,79 @@
+const cron = require("node-cron");
+const Upvote = require("../database/upvote.js");
+const {
+    ChannelType
+} = require("discord.js");
+
+function monthlyUpvotes(client) {
+    cron.schedule("5 0 1 * *", async () => {
+        const now = new Date();
+        const firstDayOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const monthName = firstDayOfPreviousMonth.toLocaleString("default", { month: "long" });
+
+        const results = await Upvote.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: firstDayOfPreviousMonth }
+                }
+            },
+            {
+                $group: {
+                    _id: "$upvotedUserId",
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { count: -1 } }
+        ]);
+
+        client.guilds.cache.forEach(guild => {
+            const announcementChannel = guild.channels.cache.find(channel =>
+                channel.name === process.env.ANNOUNCEMENTSCHANNELNAME && channel.type === ChannelType.GuildText
+            );
+
+            const emoji = guild.emojis.cache.find(e => e.name === "subtlethanks");
+
+            if (announcementChannel && results.length) {
+                let resultsMessage = "Hey Subtlers 👋\n\n";
+                resultsMessage += `In our discord community, you now can score points for helping each other out. If you found someone's message very helpful, react with a subtlethanks ${emoji} emoji, and that person will get one point. At the end of each month, the top scorer gets a free year of Subtle membership (once a year per person), and the top three scorers get a special mention and a Top Subtle helper role icon. At the end of the year, there will be extra special prizes for those who got the most points! 😄\n\n`;
+                resultsMessage += `So, let us turn knowledge and kindness into rewards. The ${monthName} leaders are:\n\n`;
+
+                results.slice(0, 3).forEach((result, index) => {
+                    const medal = ["🥇", "🥈", "🥉"];
+
+                    assignRoleToUser(result._id, guild, "Top Subtle Helper");
+
+                    resultsMessage += `${medal[index]} <@${result._id}> ${result.count} points\n`;
+                });
+
+                resultsMessage += "\nCongratulations to the winners! 👏🏻";
+
+                announcementChannel.send(resultsMessage).catch(console.error);
+            }
+        });
+    });
+}
+
+async function assignRoleToUser(userId, guild, roleName) {
+    try {
+        // Attempt to find the role by name
+        let role = guild.roles.cache.find(role => role.name === roleName);
+
+        // If role does not exist, create the role
+        if (!role) {
+            role = await guild.roles.create({
+                name: roleName,
+            });
+        }
+
+        // Fetch the user as a guild member
+        const member = await guild.members.fetch(userId);
+
+        // Add the role to the member
+        await member.roles.add(role);
+        console.log(`Role ${roleName} assigned to user ${member.user.tag} successfully.`);
+    } catch (error) {
+        console.error(`Failed to assign role: ${error}`);
+    }
+}
+
+module.exports = monthlyUpvotes;
