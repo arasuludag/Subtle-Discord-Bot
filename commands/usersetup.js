@@ -11,7 +11,7 @@ module.exports = {
     .addStringOption((option) =>
       option
         .setName("email")
-        .setDescription("Your Subtle email or username.")
+        .setDescription("Your Subtle website email or username.")
         .setRequired(true)
     )
     .addStringOption((option) =>

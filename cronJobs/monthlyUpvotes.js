@@ -27,7 +27,7 @@ function monthlyUpvotes(client) {
 
         client.guilds.cache.forEach(guild => {
             const announcementChannel = guild.channels.cache.find(channel =>
-                channel.name === process.env.ANNOUNCEMENTSCHANNELNAME && channel.type === ChannelType.GuildText
+                channel.name === process.env.ANNOUNCEMENTSCHANNELNAME && channel.type === ChannelType.GuildAnnouncement
             );
 
             const emoji = guild.emojis.cache.find(e => e.name === "subtlethanks");
@@ -37,13 +37,17 @@ function monthlyUpvotes(client) {
                 resultsMessage += `In our discord community, you now can score points for helping each other out. If you found someone's message very helpful, react with a subtlethanks ${emoji} emoji, and that person will get one point. At the end of each month, the top scorer gets a free year of Subtle membership (once a year per person), and the top three scorers get a special mention and a Top Subtle helper role icon. At the end of the year, there will be extra special prizes for those who got the most points! 😄\n\n`;
                 resultsMessage += `So, let us turn knowledge and kindness into rewards. The ${monthName} leaders are:\n\n`;
 
-                results.slice(0, 3).forEach((result, index) => {
-                    const medal = ["🥇", "🥈", "🥉"];
+                const committeeMembers = process.env.COMMITTEE_MEMBERS.split(",");
 
-                    assignRoleToUser(result._id, guild, "Top Subtle Helper");
+                results.filter(result => !committeeMembers.includes(result._id))
+                    .slice(0, 3)
+                    .forEach((result, index) => {
+                        const medal = ["🥇", "🥈", "🥉"];
 
-                    resultsMessage += `${medal[index]} <@${result._id}> ${result.count} points\n`;
-                });
+                        assignRoleToUser(result._id, guild, "Top Subtle Helper");
+
+                        resultsMessage += `${medal[index]} <@${result._id}> ${result.count} points\n`;
+                    });
 
                 resultsMessage += "\nCongratulations to the winners! 👏🏻";
 
