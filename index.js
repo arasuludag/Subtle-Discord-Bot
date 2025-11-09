@@ -14,6 +14,7 @@ const mongoose = require("mongoose");
 const monthlyUpvotes = require("./cronJobs/monthlyUpvotes");
 const addUpvote = require("./reactions/addUpvote");
 const removeUpvote = require("./reactions/removeUpvote");
+const { initializeAPI, startServer } = require("./api/server");
 
 const client = new Client({
   intents: [
@@ -62,6 +63,11 @@ client.on("ready", async () => {
   });
 
   monthlyUpvotes(client);
+
+  // Initialize and start the API server
+  initializeAPI(client);
+  const apiPort = process.env.API_PORT || 3000;
+  await startServer(apiPort);
 
 });
 
