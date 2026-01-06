@@ -12,6 +12,7 @@ const { deploy } = require("./deploy-commands");
 const { commands } = require("./!commands/exclamationCommands");
 const mongoose = require("mongoose");
 const monthlyUpvotes = require("./cronJobs/monthlyUpvotes");
+const yearlyUpvotes = require("./cronJobs/yearlyUpvotes");
 const addUpvote = require("./reactions/addUpvote");
 const removeUpvote = require("./reactions/removeUpvote");
 const { initializeAPI, startServer } = require("./api/server");
@@ -63,6 +64,7 @@ client.on("ready", async () => {
   });
 
   monthlyUpvotes(client);
+  yearlyUpvotes(client);
 
   // Initialize and start the API server
   initializeAPI(client);
